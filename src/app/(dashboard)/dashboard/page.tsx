@@ -1,18 +1,33 @@
 import { requireStudentOrParent } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
-import { bookings, tutorProfiles, studentProfiles } from "@/lib/db/schema";
+import { bookings, tutorProfiles, studentProfiles, parentProfiles } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { paiseToRupees } from "@/lib/utils/money";
 import { ClientCheckoutButton } from "./ClientCheckoutButton";
+import Link from "next/link";
 
 export default async function StudentDashboard() {
   const session = await requireStudentOrParent();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (session.user as any).id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const role = (session.user as any).role;
 
-  const student = await db.query.studentProfiles.findFirst({
-    where: eq(studentProfiles.userId, userId)
-  });
+  let student = null;
+  if (role === "STUDENT") {
+    student = await db.query.studentProfiles.findFirst({
+      where: eq(studentProfiles.userId, userId)
+    });
+  } else if (role === "PARENT") {
+    const parent = await db.query.parentProfiles.findFirst({
+      where: eq(parentProfiles.userId, userId)
+    });
+    if (parent) {
+      student = await db.query.studentProfiles.findFirst({
+        where: eq(studentProfiles.parentId, parent.id)
+      });
+    }
+  }
 
   if (!student) {
     return (
@@ -44,7 +59,12 @@ export default async function StudentDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 py-12">
-      <h1 className="font-serif text-3xl md:text-4xl mb-8">Student Dashboard</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <h1 className="font-serif text-3xl md:text-4xl">Student Dashboard</h1>
+        <Link href="/dashboard/learning" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-full font-medium transition-colors text-center shadow-md">
+          Go to Learning Ecosystem
+        </Link>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         

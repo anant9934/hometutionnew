@@ -2,7 +2,7 @@
 
 import { requireStudentOrParent, requireTutor } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
-import { bookings, studentProfiles, tutorProfiles } from "@/lib/db/schema";
+import { bookings, studentProfiles, tutorProfiles, parentProfiles } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -17,22 +17,28 @@ export async function createBooking(data: {
   const session = await requireStudentOrParent();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (session.user as any).id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const role = (session.user as any).role;
 
-  // We need to resolve the userId to a studentProfileId.
-  // In a complete flow, a PARENT would have created a student profile, or STUDENT has one directly.
-  // For Phase 2 foundation, we'll try to find a direct student profile, or create a mock one if missing.
-  
-  let studentProfile = await db.query.studentProfiles.findFirst({
-    where: eq(studentProfiles.userId, userId)
-  });
+  let studentProfile = null;
 
-  // Fail-safe for testing: if no profile exists, create a basic one.
+  if (role === "STUDENT") {
+    studentProfile = await db.query.studentProfiles.findFirst({
+      where: eq(studentProfiles.userId, userId)
+    });
+  } else if (role === "PARENT") {
+    const parentProfile = await db.query.parentProfiles.findFirst({
+      where: eq(parentProfiles.userId, userId)
+    });
+    if (parentProfile) {
+      studentProfile = await db.query.studentProfiles.findFirst({
+        where: eq(studentProfiles.parentId, parentProfile.id)
+      });
+    }
+  }
+
   if (!studentProfile) {
-    const newStudent = await db.insert(studentProfiles).values({
-      userId: userId,
-      name: session.user?.name || "Student",
-    }).returning();
-    studentProfile = newStudent[0];
+    return { success: false, error: "Please complete your student profile first." };
   }
 
   try {

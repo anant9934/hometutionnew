@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CashfreeService } from "@/lib/payments";
 import { db } from "@/lib/db";
-import { payments, bookings, commissions, webhookEvents, auditLogs } from "@/lib/db/schema";
+import { payments, bookings, commissions, webhookEvents, auditLogs, enrollments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { calculateCommission } from "@/lib/utils/money";
 
@@ -67,6 +67,14 @@ export async function POST(req: NextRequest) {
 
       const bookingId = paymentRecord.bookingId;
       
+      const bookingRecord = await db.query.bookings.findFirst({
+        where: eq(bookings.id, bookingId)
+      });
+      
+      if (!bookingRecord) {
+        return NextResponse.json({ message: "Booking not found" }, { status: 200 });
+      }
+
       // Update Payment
       await db.update(payments)
         .set({ 
@@ -81,6 +89,26 @@ export async function POST(req: NextRequest) {
       await db.update(bookings)
         .set({ status: "CONFIRMED", updatedAt: new Date() })
         .where(eq(bookings.id, bookingId));
+
+      // Phase 4: Create/Activate Enrollment
+      if (bookingRecord.subjectId && bookingRecord.classId) {
+        await db.insert(enrollments).values({
+          studentId: bookingRecord.studentId,
+          tutorId: bookingRecord.tutorId,
+          subjectId: bookingRecord.subjectId,
+          classId: bookingRecord.classId,
+          bookingId: bookingRecord.id,
+          status: "ACTIVE",
+          startDate: new Date(),
+        });
+
+        await db.insert(auditLogs).values({
+          action: "ENROLLMENT_ACTIVATED",
+          entityType: "ENROLLMENT",
+          entityId: bookingRecord.id,
+          metadata: JSON.stringify({ bookingId: bookingRecord.id, subjectId: bookingRecord.subjectId })
+        });
+      }
 
       // Calculate and Record Commission
       const { commissionAmountPaise, tutorAmountPaise } = calculateCommission(paymentRecord.amountPaise);
@@ -103,6 +131,7 @@ export async function POST(req: NextRequest) {
         entityId: paymentRecord.id,
         metadata: JSON.stringify({ amountPaise: paymentRecord.amountPaise, commissionPaise: commissionAmountPaise })
       });
+      
       
     } else if (eventType === "PAYMENT_FAILED_WEBHOOK" || paymentStatus === "FAILED") {
       // Handle Failure

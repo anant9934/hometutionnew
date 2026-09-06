@@ -2,7 +2,7 @@
 
 import { requireStudentOrParent } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
-import { bookings, payments, studentProfiles } from "@/lib/db/schema";
+import { bookings, payments, studentProfiles, parentProfiles } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { CashfreeService } from "@/lib/payments";
 
@@ -10,11 +10,25 @@ export async function initiatePayment(bookingId: string) {
   const session = await requireStudentOrParent();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (session.user as any).id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const role = (session.user as any).role;
 
-  // 1. Get student profile
-  const student = await db.query.studentProfiles.findFirst({
-    where: eq(studentProfiles.userId, userId)
-  });
+  let student = null;
+
+  if (role === "STUDENT") {
+    student = await db.query.studentProfiles.findFirst({
+      where: eq(studentProfiles.userId, userId)
+    });
+  } else if (role === "PARENT") {
+    const parent = await db.query.parentProfiles.findFirst({
+      where: eq(parentProfiles.userId, userId)
+    });
+    if (parent) {
+      student = await db.query.studentProfiles.findFirst({
+        where: eq(studentProfiles.parentId, parent.id)
+      });
+    }
+  }
 
   if (!student) {
     return { success: false, error: "Student profile not found." };

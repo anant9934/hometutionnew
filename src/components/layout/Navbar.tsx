@@ -18,16 +18,10 @@ export function Navbar() {
           </Link>
           <nav className="hidden lg:flex items-center gap-8 text-sm font-medium">
             <Link href="/find-tutor" className="hover:text-[var(--accent)] transition-colors">
-              Find Tutor
+              Find a Tutor
             </Link>
-            <Link href="/how-it-works" className="hover:text-[var(--accent)] transition-colors">
-              How It Works
-            </Link>
-            <Link href="/quiz" className="hover:text-[var(--accent)] transition-colors">
-              Quiz
-            </Link>
-            <Link href="/study-material" className="hover:text-[var(--accent)] transition-colors">
-              Study Material
+            <Link href="/dashboard/learning" className="hover:text-[var(--accent)] transition-colors">
+              Learning Ecosystem
             </Link>
             <Link href="/become-a-tutor" className="hover:text-[var(--accent)] transition-colors">
               Become a Tutor
@@ -68,9 +62,7 @@ export function Navbar() {
         <div className="lg:hidden absolute top-20 left-0 w-full bg-[var(--background)] border-b border-[var(--accent-border)] p-4 flex flex-col gap-4 shadow-lg">
           <nav className="flex flex-col gap-4 text-sm font-medium">
             <Link href="/find-tutor" onClick={() => setIsOpen(false)} className="hover:text-[var(--accent)]">Find Tutor</Link>
-            <Link href="/how-it-works" onClick={() => setIsOpen(false)} className="hover:text-[var(--accent)]">How It Works</Link>
-            <Link href="/quiz" onClick={() => setIsOpen(false)} className="hover:text-[var(--accent)]">Quiz</Link>
-            <Link href="/study-material" onClick={() => setIsOpen(false)} className="hover:text-[var(--accent)]">Study Material</Link>
+            <Link href="/dashboard/learning" onClick={() => setIsOpen(false)} className="hover:text-[var(--accent)]">Learning Ecosystem</Link>
             <Link href="/become-a-tutor" onClick={() => setIsOpen(false)} className="hover:text-[var(--accent)]">Become a Tutor</Link>
             <Link href="/about" onClick={() => setIsOpen(false)} className="hover:text-[var(--accent)]">About</Link>
             <Link href="/contact" onClick={() => setIsOpen(false)} className="hover:text-[var(--accent)]">Contact</Link>

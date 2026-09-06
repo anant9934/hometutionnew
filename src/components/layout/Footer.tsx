@@ -22,8 +22,8 @@ export function Footer() {
         <div>
           <h4 className="font-medium mb-4 text-xs uppercase tracking-widest text-[var(--accent)]">Academic</h4>
           <ul className="space-y-3 text-sm text-[var(--foreground-secondary)]">
-            <li><Link href="/quiz" className="hover:text-[var(--accent)] transition-colors">Quiz</Link></li>
-            <li><Link href="/study-material" className="hover:text-[var(--accent)] transition-colors">Study Material</Link></li>
+            <li><Link href="/dashboard/learning" className="hover:text-[var(--accent)] transition-colors">Learning Ecosystem</Link></li>
+            <li><Link href="/dashboard/leaderboard" className="hover:text-[var(--accent)] transition-colors">Leaderboards</Link></li>
           </ul>
         </div>
         <div>

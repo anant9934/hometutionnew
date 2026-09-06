@@ -260,54 +260,158 @@ export const complaints = pgTable("complaints", {
 
 // --- ACADEMIC ECOSYSTEM (Phase 4) ---
 
-export const quizzes = pgTable("quizzes", {
+// Academic Hierarchy
+export const chapters = pgTable("chapters", {
   id: uuid("id").primaryKey().defaultRandom(),
+  subjectId: uuid("subject_id").references(() => subjects.id, { onDelete: "cascade" }).notNull(),
+  classId: uuid("class_id").references(() => academicClasses.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  order: integer("order").default(0).notNull(),
+});
+
+export const topics = pgTable("topics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  order: integer("order").default(0).notNull(),
+});
+
+// Entitlement Foundation
+export const enrollments = pgTable("enrollments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id").references(() => studentProfiles.id, { onDelete: "cascade" }).notNull(),
+  tutorId: uuid("tutor_id").references(() => tutorProfiles.id).notNull(),
   subjectId: uuid("subject_id").references(() => subjects.id).notNull(),
   classId: uuid("class_id").references(() => academicClasses.id).notNull(),
-  title: text("title").notNull(),
+  bookingId: uuid("booking_id").references(() => bookings.id).notNull(),
+  status: text("status").default("PENDING").notNull(), // PENDING, ACTIVE, EXPIRED, CANCELLED
+  startDate: timestamp("start_date", { mode: "date" }),
+  endDate: timestamp("end_date", { mode: "date" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Learning Content
+export const studyMaterials = pgTable("study_materials", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  slug: text("slug").unique().notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // NOTE, WORKSHEET, PYQ, FORMULA_SHEET, MOCK_TEST, VIDEO
+  subjectId: uuid("subject_id").references(() => subjects.id).notNull(),
+  classId: uuid("class_id").references(() => academicClasses.id).notNull(),
+  chapterId: uuid("chapter_id").references(() => chapters.id),
+  topicId: uuid("topic_id").references(() => topics.id),
+  fileUrl: text("file_url"), // Cloudinary URL
+  thumbnailUrl: text("thumbnail_url"),
+  accessLevel: text("access_level").default("ENROLLED").notNull(), // PUBLIC, ENROLLED, PREMIUM
+  isPublished: boolean("is_published").default(false).notNull(),
+  createdBy: text("created_by").references(() => users.id), // Admin user ID
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Quiz Engine
+export const quizzes = pgTable("quizzes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  slug: text("slug").unique().notNull(),
+  description: text("description"),
+  type: text("type").default("PRACTICE").notNull(), // PRACTICE, WEEKLY, MOCK_TEST, COMPETITION
+  subjectId: uuid("subject_id").references(() => subjects.id).notNull(),
+  classId: uuid("class_id").references(() => academicClasses.id).notNull(),
+  chapterId: uuid("chapter_id").references(() => chapters.id),
+  topicId: uuid("topic_id").references(() => topics.id),
+  durationMinutes: integer("duration_minutes"), // Null means unlimited
+  totalMarks: integer("total_marks").default(0).notNull(),
+  passingMarks: integer("passing_marks").default(0).notNull(),
+  negativeMarksPerWrongAnswer: integer("negative_marks").default(0).notNull(), // e.g. 0 or 25 (meaning 0.25)
+  isPublished: boolean("is_published").default(false).notNull(),
+  startsAt: timestamp("starts_at", { mode: "date" }),
+  endsAt: timestamp("ends_at", { mode: "date" }),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const quizQuestions = pgTable("quiz_questions", {
   id: uuid("id").primaryKey().defaultRandom(),
   quizId: uuid("quiz_id").references(() => quizzes.id, { onDelete: "cascade" }).notNull(),
   questionText: text("question_text").notNull(),
+  explanation: text("explanation"),
+  marks: integer("marks").default(1).notNull(),
+  type: text("type").default("MCQ").notNull(), // MCQ
+  difficulty: text("difficulty").default("MEDIUM").notNull(), // EASY, MEDIUM, HARD
+  order: integer("order").default(0).notNull(),
+});
+
+export const quizOptions = pgTable("quiz_options", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  questionId: uuid("question_id").references(() => quizQuestions.id, { onDelete: "cascade" }).notNull(),
+  optionText: text("option_text").notNull(),
+  isCorrect: boolean("is_correct").default(false).notNull(), // CRITICAL: Never send this to client before submit!
+  order: integer("order").default(0).notNull(),
 });
 
 export const quizAttempts = pgTable("quiz_attempts", {
   id: uuid("id").primaryKey().defaultRandom(),
   quizId: uuid("quiz_id").references(() => quizzes.id).notNull(),
   studentId: uuid("student_id").references(() => studentProfiles.id).notNull(),
+  status: text("status").default("IN_PROGRESS").notNull(), // IN_PROGRESS, SUBMITTED, ABANDONED
+  score: integer("score"),
+  percentage: integer("percentage"),
+  correctCount: integer("correct_count"),
+  incorrectCount: integer("incorrect_count"),
+  unansweredCount: integer("unanswered_count"),
+  timeTakenSeconds: integer("time_taken_seconds"),
   startedAt: timestamp("started_at").defaultNow().notNull(),
-  completedAt: timestamp("completed_at"),
+  submittedAt: timestamp("submitted_at"),
 });
 
-export const quizResults = pgTable("quiz_results", {
+export const quizAnswers = pgTable("quiz_answers", {
   id: uuid("id").primaryKey().defaultRandom(),
-  attemptId: uuid("attempt_id").references(() => quizAttempts.id).notNull(),
-  score: integer("score").notNull(),
+  attemptId: uuid("attempt_id").references(() => quizAttempts.id, { onDelete: "cascade" }).notNull(),
+  questionId: uuid("question_id").references(() => quizQuestions.id).notNull(),
+  selectedOptionId: uuid("selected_option_id").references(() => quizOptions.id), // Null if unanswered
+  isCorrect: boolean("is_correct"),
+  marksAwarded: integer("marks_awarded"), // Support negative marks
+  answeredAt: timestamp("answered_at").defaultNow().notNull(),
 });
 
-export const leaderboards = pgTable("leaderboards", {
+// Academic Performance & History
+export const studentTopicPerformance = pgTable("student_topic_performance", {
   id: uuid("id").primaryKey().defaultRandom(),
-  studentId: uuid("student_id").references(() => studentProfiles.id).notNull(),
-  points: integer("points").default(0).notNull(),
+  studentId: uuid("student_id").references(() => studentProfiles.id, { onDelete: "cascade" }).notNull(),
+  topicId: uuid("topic_id").references(() => topics.id, { onDelete: "cascade" }).notNull(),
+  attemptsCount: integer("attempts_count").default(0).notNull(),
+  correctCount: integer("correct_count").default(0).notNull(),
+  incorrectCount: integer("incorrect_count").default(0).notNull(),
+  averageAccuracy: integer("average_accuracy").default(0).notNull(), // 0-100
+  status: text("status").default("UNKNOWN").notNull(), // STRONG, WEAK, UNKNOWN
+  lastAttemptAt: timestamp("last_attempt_at"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const studyMaterials = pgTable("study_materials", {
+// Gamification & Rewards
+export const leaderboards = pgTable("leaderboards", {
   id: uuid("id").primaryKey().defaultRandom(),
-  subjectId: uuid("subject_id").references(() => subjects.id).notNull(),
-  classId: uuid("class_id").references(() => academicClasses.id).notNull(),
-  title: text("title").notNull(),
-  fileUrl: text("file_url").notNull(), // Cloudinary URL
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  quizId: uuid("quiz_id").references(() => quizzes.id, { onDelete: "cascade" }), // Nullable for global leaderboard
+  studentId: uuid("student_id").references(() => studentProfiles.id).notNull(),
+  scope: text("scope").default("WEEKLY").notNull(), // WEEKLY, GLOBAL
+  rank: integer("rank"),
+  score: integer("score").default(0).notNull(),
+  timeTakenSeconds: integer("time_taken_seconds").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const certificates = pgTable("certificates", {
   id: uuid("id").primaryKey().defaultRandom(),
+  certificateNumber: text("certificate_number").unique().notNull(),
   studentId: uuid("student_id").references(() => studentProfiles.id).notNull(),
+  type: text("type").notNull(), // QUIZ_CHAMPION, TOP_PERFORMER
   title: text("title").notNull(),
+  description: text("description"),
+  metadata: text("metadata"), // JSON
   issuedAt: timestamp("issued_at").defaultNow().notNull(),
 });
 
