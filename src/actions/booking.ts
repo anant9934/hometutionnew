@@ -1,9 +1,9 @@
 "use server";
 
-import { requireStudentOrParent } from "@/lib/auth/authorization";
+import { requireStudentOrParent, requireTutor } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
-import { bookings, studentProfiles } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { bookings, studentProfiles, tutorProfiles } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createBooking(data: {
@@ -53,5 +53,62 @@ export async function createBooking(data: {
   } catch (error) {
     console.error("Booking creation error:", error);
     return { success: false, error: "Failed to create booking request" };
+  }
+}
+
+export async function acceptBooking(bookingId: string) {
+  const session = await requireTutor();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userId = (session.user as any).id;
+
+  const tutorProfile = await db.query.tutorProfiles.findFirst({
+    where: eq(tutorProfiles.userId, userId)
+  });
+
+  if (!tutorProfile) return { success: false, error: "Tutor profile not found" };
+
+  try {
+    await db.update(bookings)
+      .set({ status: "ACCEPTED", updatedAt: new Date() })
+      .where(and(
+        eq(bookings.id, bookingId),
+        eq(bookings.tutorId, tutorProfile.id),
+        eq(bookings.status, "PENDING")
+      ));
+
+    revalidatePath("/tutor-dashboard");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to accept booking:", error);
+    return { success: false, error: "Failed to accept booking" };
+  }
+}
+
+export async function rejectBooking(bookingId: string) {
+  const session = await requireTutor();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userId = (session.user as any).id;
+
+  const tutorProfile = await db.query.tutorProfiles.findFirst({
+    where: eq(tutorProfiles.userId, userId)
+  });
+
+  if (!tutorProfile) return { success: false, error: "Tutor profile not found" };
+
+  try {
+    await db.update(bookings)
+      .set({ status: "REJECTED", updatedAt: new Date() })
+      .where(and(
+        eq(bookings.id, bookingId),
+        eq(bookings.tutorId, tutorProfile.id),
+        eq(bookings.status, "PENDING")
+      ));
+
+    revalidatePath("/tutor-dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to reject booking:", error);
+    return { success: false, error: "Failed to reject booking" };
   }
 }

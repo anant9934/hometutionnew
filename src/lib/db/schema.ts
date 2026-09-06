@@ -160,7 +160,7 @@ export const bookings = pgTable("bookings", {
   startDate: timestamp("start_date", { mode: "date" }),
   message: text("message"),
   price: integer("price").notNull(), // in paise
-  status: text("status").default("PENDING").notNull(), // PENDING, ACCEPTED, REJECTED, CANCELLED, COMPLETED
+  status: text("status").default("PENDING").notNull(), // PENDING, ACCEPTED, PAYMENT_PENDING, CONFIRMED, REJECTED, CANCELLED, COMPLETED
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -183,27 +183,64 @@ export const attendance = pgTable("attendance", {
 export const payments = pgTable("payments", {
   id: uuid("id").primaryKey().defaultRandom(),
   bookingId: uuid("booking_id").references(() => bookings.id).notNull(),
-  amount: integer("amount").notNull(),
-  status: text("status").default("PENDING").notNull(),
-  cashfreeOrderId: text("cashfree_order_id"),
+  payerId: text("payer_id").references(() => users.id).notNull(),
+  tutorId: uuid("tutor_id").references(() => tutorProfiles.id).notNull(),
+  amountPaise: integer("amount_paise").notNull(),
+  currency: text("currency").default("INR").notNull(),
+  status: text("status").default("CREATED").notNull(), // CREATED, PENDING, SUCCESS, FAILED, REFUND_PENDING, REFUNDED
+  provider: text("provider").default("CASHFREE").notNull(),
+  providerOrderId: text("provider_order_id").unique(),
+  providerPaymentId: text("provider_payment_id").unique(),
+  failureCode: text("failure_code"),
+  failureMessage: text("failure_message"),
+  paidAt: timestamp("paid_at", { mode: "date" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const commissions = pgTable("commissions", {
   id: uuid("id").primaryKey().defaultRandom(),
-  paymentId: uuid("payment_id").references(() => payments.id).notNull(),
-  amount: integer("amount").notNull(),
+  bookingId: uuid("booking_id").references(() => bookings.id).notNull(),
+  paymentId: uuid("payment_id").references(() => payments.id).notNull().unique(),
+  tutorId: uuid("tutor_id").references(() => tutorProfiles.id).notNull(),
+  grossAmountPaise: integer("gross_amount_paise").notNull(),
+  commissionRateBps: integer("commission_rate_bps").notNull(), // e.g. 1000 = 10%
+  commissionAmountPaise: integer("commission_amount_paise").notNull(),
+  tutorAmountPaise: integer("tutor_amount_paise").notNull(),
+  status: text("status").default("PENDING").notNull(), // PENDING, EARNED, REFUNDED
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const payouts = pgTable("payouts", {
   id: uuid("id").primaryKey().defaultRandom(),
   tutorId: uuid("tutor_id").references(() => tutorProfiles.id).notNull(),
-  amount: integer("amount").notNull(),
-  status: text("status").default("PENDING").notNull(),
+  amountPaise: integer("amount_paise").notNull(),
+  status: text("status").default("PENDING").notNull(), // PENDING, PROCESSING, PAID, FAILED
+  providerPayoutId: text("provider_payout_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const webhookEvents = pgTable("webhook_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  provider: text("provider").notNull(), // e.g., CASHFREE
+  eventId: text("event_id").notNull(), // from provider
+  eventType: text("event_type").notNull(),
+  processed: boolean("processed").default(false).notNull(),
+  processedAt: timestamp("processed_at", { mode: "date" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorUserId: text("actor_user_id").references(() => users.id),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  metadata: text("metadata"), // JSON string of safe metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 export const reviews = pgTable("reviews", {
   id: uuid("id").primaryKey().defaultRandom(),
   bookingId: uuid("booking_id").references(() => bookings.id).notNull(),
