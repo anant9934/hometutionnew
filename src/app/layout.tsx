@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { siteConfig } from "@/config/site";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -18,8 +19,12 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Bodh Tuition | Trusted Home Tuition in Patna",
-  description: "Find trusted home tutors in Patna for school students. Discover tutors by class, subject, location, schedule and learning needs.",
+  title: {
+    default: `${siteConfig.name} | Trusted Home Tuition in Patna`,
+    template: `%s | ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  metadataBase: new URL(siteConfig.url),
 };
 
 export const viewport: Viewport = {

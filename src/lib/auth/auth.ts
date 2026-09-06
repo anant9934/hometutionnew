@@ -1,8 +1,12 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-// Future: Import Drizzle adapter here if full session DB sync is needed
+import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: DrizzleAdapter(db),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -10,11 +14,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async session({ session }) {
-      if (session.user) {
-        // In Phase 2: Query DB for user role and append to session
+    async session({ session, user }) {
+      if (session.user && user) {
+        // user object comes from the database via DrizzleAdapter
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).role = "PENDING_SETUP"; // Placeholder
+        (session.user as any).id = user.id;
+        
+        // Fetch role if not directly available on the adapter user type
+        const dbUser = await db.select({ role: users.role }).from(users).where(eq(users.id, user.id)).limit(1);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session.user as any).role = dbUser[0]?.role || null;
       }
       return session;
     },
