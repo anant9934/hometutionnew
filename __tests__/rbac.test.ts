@@ -23,7 +23,8 @@ describe("RBAC Logic", () => {
     });
 
     const session = await requireRole(["TUTOR", "ADMIN"]);
-    expect(session.user.role).toBe("TUTOR");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((session?.user as any)?.role).toBe("TUTOR");
     expect(redirect).not.toHaveBeenCalled();
   });
 
