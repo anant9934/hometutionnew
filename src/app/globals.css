@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Colors */
+  --color-background: var(--background);
+  --color-background-alt: var(--background-alt);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-accent-border: var(--accent-border);
+
+  /* Fonts */
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
+
+  /* Border Radii */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-card: 24px;
+  --radius-pill: 100px;
+
+  /* Shadows */
+  --shadow-card: 0 16px 40px rgba(200, 132, 42, 0.1);
+  --shadow-card-hover: 0 20px 50px rgba(200, 132, 42, 0.1);
+}
+
+:root {
+  --background: #f5f0e8;
+  --background-alt: #ede8de;
+  --foreground: #1a1208;
+  --foreground-secondary: #4a3f2f;
+  --foreground-muted: #8a7a66;
+  --accent: #c8830a;
+  --accent-light: rgba(200, 131, 10, 0.12);
+  --accent-border: rgba(200, 131, 10, 0.25);
+}
+
+.dark {
+  --background: #141210;
+  --background-alt: #1c1916;
+  --foreground: #f0ece4;
+  --foreground-secondary: #c8bfb0;
+  --foreground-muted: #8a7a66;
+  --accent: #c8830a;
+  --accent-light: rgba(200, 131, 10, 0.15);
+  --accent-border: rgba(200, 131, 10, 0.30);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  line-height: 1.8;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
