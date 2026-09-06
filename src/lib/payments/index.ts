@@ -1,4 +1,4 @@
-import { Cashfree } from "cashfree-pg";
+import { Cashfree, CFEnvironment } from "cashfree-pg";
 import { paiseToRupees } from "@/lib/utils/money";
 
 export interface PaymentIntent {
@@ -25,10 +25,8 @@ Cashfree.XClientId = process.env.CASHFREE_APP_ID || "";
 Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY || "";
 // @ts-expect-error - Cashfree types are inaccurate for v6
 Cashfree.XEnvironment = process.env.CASHFREE_ENVIRONMENT === "PRODUCTION"
-  // @ts-expect-error - Cashfree types are inaccurate for v6
-  ? Cashfree.Environment.PRODUCTION
-  // @ts-expect-error - Cashfree types are inaccurate for v6
-  : Cashfree.Environment.SANDBOX;
+  ? CFEnvironment.PRODUCTION
+  : CFEnvironment.SANDBOX;
 
 export const CashfreeService: PaymentProvider = {
   async createPayment(amountPaise, internalPaymentId, customerId, customerPhone, customerEmail) {
