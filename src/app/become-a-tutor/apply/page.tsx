@@ -101,6 +101,45 @@ export default function TutorOnboardingFunnel() {
               <option value="FEMALE">Female</option>
               <option value="OTHER">Other</option>
             </select>
+
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-medium mb-2 text-[var(--foreground-secondary)]">Verification Document / Profile Photo (Required)</h3>
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,application/pdf"
+                onChange={async (e) => {
+                  if (!e.target.files || !e.target.files[0]) return;
+                  const file = e.target.files[0];
+                  if (file.size > 5 * 1024 * 1024) {
+                    setError("File size exceeds 5MB.");
+                    return;
+                  }
+                  
+                  setIsSubmitting(true);
+                  setError(null);
+                  try {
+                    const fd = new FormData();
+                    fd.append("file", file);
+                    // The action is imported below, but since it's a server action, it should be in the file scope.
+                    const { uploadTutorDocument } = await import("@/actions/tutor");
+                    const res = await uploadTutorDocument(fd);
+                    
+                    if (res.success) {
+                      // Note: usually we'd save this to local state, but the server action saves it directly to DB
+                      alert("Document uploaded securely!");
+                    } else {
+                      setError(res.error || "Upload failed");
+                    }
+                  } catch (err) {
+                    setError("Upload exception occurred.");
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="w-full p-2 border rounded-md"
+              />
+              <p className="text-xs text-[var(--foreground-secondary)] mt-2">Max 5MB (JPG, PNG, PDF). Uploads are secured on the server.</p>
+            </div>
           </>
         )}
 

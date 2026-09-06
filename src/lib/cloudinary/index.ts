@@ -1,33 +1,61 @@
-// Phase 1: Service Abstraction Foundation
-// Real implementation requires cloudinary SDK in Phase 2
+import { v2 as cloudinary } from "cloudinary";
 
 export interface CloudinaryUploadResult {
   url: string;
   publicId: string;
 }
 
+// Configure Cloudinary globally
+if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET && process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
+
 export const CloudinaryService = {
   /**
-   * Generates a signed signature for secure client-side uploads.
-   * MUST NOT expose API Secret to client.
+   * Server-side upload function for private documents.
+   * This uses an in-memory stream to avoid writing files to disk.
    */
-  async generateSignature(): Promise<{ timestamp: number; signature: string }> {
+  async uploadPrivateDocument(fileBuffer: Buffer, folder: string): Promise<CloudinaryUploadResult> {
     if (!process.env.CLOUDINARY_API_SECRET) {
-      throw new Error("Missing Cloudinary credentials");
+      throw new Error("Missing Cloudinary credentials. Cannot upload.");
     }
-    // Implementation deferred to Phase 2
-    return { timestamp: Math.round(new Date().getTime() / 1000), signature: "mock-signature" };
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "auto",
+        },
+        (error, result) => {
+          if (error || !result) {
+            console.error("Cloudinary upload failed:", error);
+            reject(new Error("Cloudinary upload failed"));
+          } else {
+            resolve({
+              url: result.secure_url,
+              publicId: result.public_id,
+            });
+          }
+        }
+      );
+
+      uploadStream.end(fileBuffer);
+    });
   },
 
   /**
-   * Server-side upload function for private documents.
+   * Optional: Safely delete a document
    */
-  async uploadPrivateDocument(fileBuffer: Buffer, folder: string): Promise<CloudinaryUploadResult> {
-    // Implementation deferred to Phase 2
-    console.log(`Mock uploading to ${folder}`);
-    return {
-      url: "https://res.cloudinary.com/mock/image/upload/v1/mock.jpg",
-      publicId: "mock-id"
-    };
+  async deleteDocument(publicId: string): Promise<void> {
+    if (!process.env.CLOUDINARY_API_SECRET) return;
+    try {
+      await cloudinary.uploader.destroy(publicId);
+    } catch (e) {
+      console.error("Failed to delete from Cloudinary:", e);
+    }
   }
 };

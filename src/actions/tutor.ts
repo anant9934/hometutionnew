@@ -123,3 +123,58 @@ export async function submitTutorVerification() {
     return { success: false, error: "Failed to submit verification" };
   }
 }
+
+export async function uploadTutorDocument(formData: FormData) {
+  const session = await requireTutor();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userId = (session.user as any).id;
+
+  const file = formData.get("file") as File;
+  if (!file) {
+    return { success: false, error: "No file provided" };
+  }
+
+  // Security Validation
+  const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+  if (!allowedTypes.includes(file.type)) {
+    return { success: false, error: "Invalid file type. Only JPG, PNG, and PDF are allowed." };
+  }
+
+  // 5MB Limit
+  if (file.size > 5 * 1024 * 1024) {
+    return { success: false, error: "File size exceeds 5MB limit." };
+  }
+
+  try {
+    const { CloudinaryService } = await import("@/lib/cloudinary");
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const result = await CloudinaryService.uploadPrivateDocument(
+      buffer, 
+      "bodh/private/verification"
+    );
+
+    // Save URL to tutor profile
+    const existingProfile = await db.query.tutorProfiles.findFirst({
+      where: eq(tutorProfiles.userId, userId)
+    });
+
+    if (!existingProfile) {
+      return { success: false, error: "Profile not found before upload" };
+    }
+
+    await db.update(tutorProfiles)
+      .set({ profileImage: result.url })
+      .where(eq(tutorProfiles.id, existingProfile.id));
+
+    revalidatePath("/become-a-tutor/apply");
+    return { success: true, url: result.url };
+
+  } catch (error) {
+    console.error("Upload error:", error);
+    return { success: false, error: "Failed to upload document securely." };
+  }
+}
+
